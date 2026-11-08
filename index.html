@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#c4472f">
+<title>Menüplaner</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bg: #faf6f3; --card: #ffffff; --text: #2b2320; --muted: #86756e;
+    --accent: #c4472f; --accent-soft: #fbe9e4; --border: #eadfd9;
+    --ok: #3d9b63; --danger: #d9534f; --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1715; --card: #2a2321; --text: #f1e8e4; --muted: #a8968e;
+      --accent: #e0654c; --accent-soft: #43261f; --border: #3d322e;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); padding-bottom: 150px; }
+  header { background: var(--accent); color: #fff; padding: calc(env(safe-area-inset-top, 0px) + 14px) 16px 14px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 1.15rem; font-weight: 700; }
+  header button { background: rgba(255,255,255,.2); border: none; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: .8rem; cursor: pointer; }
+  [hidden] { display: none !important; }
+  main { max-width: 560px; margin: 0 auto; padding: 14px; }
+  h2 { font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 18px 0 8px; }
+  .empty { text-align: center; color: var(--muted); font-size: .88rem; padding: 22px 0; line-height: 1.5; }
+  .hint { font-size: .75rem; color: var(--muted); line-height: 1.4; margin-top: 10px; }
+  .link-btn { background: none; border: none; color: var(--accent); font-size: .85rem; cursor: pointer; padding: 6px 0; font-weight: 600; }
+  .chip { font-size: .7rem; padding: 3px 8px; border-radius: 10px; white-space: nowrap; font-weight: 600; background: var(--accent-soft); color: var(--accent); }
+  .chip.muted { background: var(--bg); color: var(--muted); font-weight: 400; }
+
+  /* Wochenleiste */
+  .weeknav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .weeknav button { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); font-size: 1.2rem; cursor: pointer; color: var(--text); }
+  .weeknav div { text-align: center; }
+  .weeknav b { display: block; font-size: 1.1rem; }
+  .weeknav small { font-size: .78rem; color: var(--muted); }
+
+  .day { background: var(--card); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.05); border: 2px solid transparent; }
+  .day.today { border-color: var(--accent); }
+  .day-head { display: flex; align-items: center; gap: 8px; }
+  .day-head b { font-size: .95rem; }
+  .day-head span { font-size: .78rem; color: var(--muted); flex: 1; }
+  .add-btn { background: var(--accent-soft); color: var(--accent); border: none; border-radius: 16px; padding: 6px 12px; font-size: .78rem; font-weight: 600; cursor: pointer; }
+  .entry { display: flex; align-items: center; gap: 8px; padding: 8px 0 2px; }
+  .entry .ename { flex: 1; min-width: 0; font-size: .92rem; cursor: pointer; overflow-wrap: anywhere; }
+  .entry .ename.free { color: var(--muted); font-style: italic; cursor: default; }
+  .qty { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .qty button { width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--border); background: var(--bg); font-size: 1rem; cursor: pointer; color: var(--text); }
+  .qty b { min-width: 22px; text-align: center; font-size: .9rem; }
+  .qty small { font-size: .7rem; color: var(--muted); margin-left: 2px; }
+  .x-btn { background: none; border: none; color: var(--muted); font-size: 1rem; cursor: pointer; padding: 4px 6px; }
+
+  /* Rezepte */
+  .search { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 12px; font-size: 1rem; background: var(--card); color: var(--text); margin-bottom: 10px; }
+  .filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 4px; }
+  .filters button { flex-shrink: 0; border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 16px; padding: 6px 12px; font-size: .78rem; cursor: pointer; }
+  .filters button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .recipe { background: var(--card); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.05); cursor: pointer; }
+  .recipe b { font-size: .95rem; }
+  .recipe .meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; align-items: center; font-size: .75rem; color: var(--muted); }
+
+  /* Einkauf */
+  .row { background: var(--card); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .row input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent); flex-shrink: 0; }
+  .row .info { flex: 1; min-width: 0; }
+  .row .info b { font-size: .92rem; font-weight: 600; overflow-wrap: anywhere; }
+  .row .info span { display: block; font-size: .72rem; color: var(--muted); margin-top: 1px; }
+  .row.done .info b { text-decoration: line-through; color: var(--muted); }
+  .daychips { display: flex; gap: 6px; margin-bottom: 8px; }
+  .daychips button { flex: 1; border: 1px solid var(--border); background: var(--card); color: var(--text); border-radius: 10px; padding: 8px 0; font-size: .78rem; cursor: pointer; }
+  .daychips button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .addline { display: flex; gap: 8px; margin: 12px 0 4px; }
+  .addline input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; font-size: .95rem; background: var(--card); color: var(--text); }
+  .addline button { border: none; background: var(--accent); color: #fff; border-radius: 12px; padding: 0 16px; font-size: 1.2rem; cursor: pointer; }
+
+  /* Untere Leiste */
+  .bottom-bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .action-row { max-width: 560px; margin: 0 auto; padding: 8px 14px 0; }
+  .action-row button { width: 100%; padding: 12px; border: none; border-radius: 12px; background: var(--accent); color: #fff; font-size: .95rem; font-weight: 600; cursor: pointer; }
+  .tabs { display: flex; max-width: 560px; margin: 0 auto; }
+  .tabs button { flex: 1; border: none; background: none; padding: 8px 0 10px; font-size: .72rem; color: var(--muted); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .tabs button .ico { font-size: 1.3rem; }
+  .tabs button.active { color: var(--accent); font-weight: 700; }
+
+  /* Dialoge */
+  dialog { border: none; border-radius: 18px; padding: 0; width: min(520px, calc(100vw - 24px)); max-height: 90vh; background: var(--card); color: var(--text); margin: auto; }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  .dialog-body { padding: 18px; max-height: 90vh; overflow-y: auto; }
+  .dialog-body h3 { font-size: 1.1rem; margin-bottom: 12px; overflow-wrap: anywhere; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: .78rem; color: var(--muted); margin-bottom: 4px; }
+  .field input, .field textarea, .field select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font: inherit; font-size: .95rem; background: var(--bg); color: var(--text); }
+  .field textarea { min-height: 150px; resize: vertical; }
+  .dialog-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .dialog-actions button, .stack button { flex: 1; padding: 11px; border: none; border-radius: 10px; font-size: .9rem; font-weight: 600; cursor: pointer; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-secondary { background: var(--bg); color: var(--text); }
+  .btn-danger { background: #fbe5e4; color: var(--danger); }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .stack button { background: var(--accent-soft); color: var(--accent); }
+  .ing { list-style: none; font-size: .92rem; line-height: 1.7; }
+  .ing li { border-bottom: 1px dashed var(--border); padding: 2px 0; }
+  .steps { white-space: pre-wrap; font-size: .9rem; line-height: 1.5; }
+  .toast { position: fixed; left: 50%; bottom: 170px; transform: translateX(-50%); background: #2b2320; color: #fff; padding: 10px 16px; border-radius: 20px; font-size: .85rem; z-index: 99; max-width: 90vw; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🍽️ Menüplaner</h1>
+  <button id="settingsBtn">⚙️ Backup</button>
+</header>
+
+<main>
+  <section id="view-woche"></section>
+  <section id="view-rezepte" hidden></section>
+  <section id="view-einkauf" hidden></section>
+</main>
+
+<div class="bottom-bar">
+  <div class="action-row" id="actionRow"><button id="actionBtn"></button></div>
+  <nav class="tabs">
+    <button data-tab="woche" class="active"><span class="ico">📅</span>Woche</button>
+    <button data-tab="rezepte"><span class="ico">📖</span>Rezepte</button>
+    <button data-tab="einkauf"><span class="ico">🛒</span>Einkauf</button>
+  </nav>
+</div>
+
+<!-- Gericht auswählen -->
+<dialog id="pickDialog">
+  <div class="dialog-body">
+    <h3 id="pickTitle">Gericht wählen</h3>
+    <input type="search" class="search" id="pickSearch" placeholder="Rezept suchen …">
+    <div id="pickList"></div>
+    <div class="dialog-actions"><button class="btn-secondary" id="pickCancel">Schließen</button></div>
+  </div>
+</dialog>
+
+<!-- Rezept ansehen -->
+<dialog id="viewDialog">
+  <div class="dialog-body" id="viewBody"></div>
+</dialog>
+
+<!-- Rezept bearbeiten -->
+<dialog id="editDialog">
+  <div class="dialog-body">
+    <h3 id="editTitle">Rezept</h3>
+    <div class="field"><label for="rName">Name</label><input type="text" id="rName" placeholder="z.B. Spaghetti Bolognese"></div>
+    <div class="field"><label for="rP">Portionen (Mengen unten beziehen sich darauf)</label><input type="number" id="rP" inputmode="numeric" min="1" max="50" value="4"></div>
+    <div class="field"><label for="rTags">Tags (mit Komma getrennt)</label><input type="text" id="rTags" placeholder="z.B. Nudeln, schnell, Kinder"></div>
+    <div class="field"><label for="rZut">Zutaten – eine pro Zeile: Menge, Einheit, Name</label>
+      <textarea id="rZut" placeholder="500 g Hackfleisch&#10;2 Zwiebeln&#10;1 EL Tomatenmark&#10;Salz"></textarea></div>
+    <div class="field"><label for="rSteps">Zubereitung</label><textarea id="rSteps" style="min-height:120px"></textarea></div>
+    <div class="dialog-actions">
+      <button class="btn-danger" id="editDelete" hidden>Löschen</button>
+      <button class="btn-secondary" id="editCancel">Abbrechen</button>
+      <button class="btn-primary" id="editSave">Speichern</button>
+    </div>
+    <p class="hint">Einheiten wie g, kg, ml, l, EL, TL, Stk, Pck, Dose, Bund, Prise, Zehe werden erkannt und beim Einkauf zusammengerechnet. Zeilen ohne Zahl (z.B. „Salz“) kommen ohne Menge auf die Liste.</p>
+  </div>
+</dialog>
+
+<!-- Backup -->
+<dialog id="settingsDialog">
+  <div class="dialog-body">
+    <h3>Backup &amp; Export</h3>
+    <div class="stack">
+      <button id="exportJsonBtn">💾 Backup speichern (JSON)</button>
+      <button id="importJsonBtn">📂 Backup einspielen</button>
+      <button id="exportRecipesBtn">📝 Rezepte als Markdown (Second Brain)</button>
+      <button id="closeSettingsBtn" style="background:var(--bg);color:var(--muted)">Schließen</button>
+    </div>
+    <input type="file" id="importInput" accept="application/json,.json" hidden>
+    <p class="hint">Alle Daten liegen nur in diesem Browser auf diesem Gerät. Mach hin und wieder ein Backup – besonders vor dem Wechsel des Handys oder dem Löschen von Browserdaten.</p>
+  </div>
+</dialog>
+
+<script>
+// ---------- Helfer ----------
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const DAYS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+const DAYS_S = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+const MON_S = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+
+function startOfWeek(d) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function dkey(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function isoWeek(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+  const y0 = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - y0) / 864e5 + 1) / 7);
+}
+function weekLabel(ws) {
+  const we = addDays(ws, 6);
+  const a = ws.getDate() + "." + (ws.getMonth() !== we.getMonth() ? " " + MON_S[ws.getMonth()] : "");
+  return `${a} – ${we.getDate()}. ${MON_S[we.getMonth()]} ${we.getFullYear()}`;
+}
+
+// ---------- Zutaten: Parsen, Formatieren, Zusammenrechnen ----------
+const UNIT_ALIAS = {
+  g: "g", gr: "g", gramm: "g", kg: "kg", kilo: "kg", ml: "ml", l: "l", liter: "l",
+  el: "EL", esslöffel: "EL", tl: "TL", teelöffel: "TL",
+  stk: "Stk", stück: "Stk", st: "Stk", pck: "Pck", pckg: "Pck", pkg: "Pck", päckchen: "Pck", packung: "Pck",
+  dose: "Dose", dosen: "Dose", bund: "Bund", prise: "Prise", prisen: "Prise",
+  zehe: "Zehe", zehen: "Zehe", scheibe: "Scheibe", scheiben: "Scheibe", glas: "Glas", becher: "Becher",
+  stange: "Stange", stangen: "Stange", kopf: "Kopf", handvoll: "Handvoll",
+};
+function parseNum(s) {
+  s = s.trim(); let m;
+  if ((m = s.match(/^(\d+)\s+(\d+)\/(\d+)$/))) return +m[1] + m[2] / m[3];
+  if ((m = s.match(/^(\d+)\/(\d+)$/))) return m[1] / m[2];
+  const f = { "½": .5, "¼": .25, "¾": .75, "⅓": 1 / 3, "⅔": 2 / 3 };
+  if (f[s]) return f[s];
+  return parseFloat(s.replace(",", "."));
+}
+function parseLine(line) {
+  line = line.replace(/^[\s\-*•·]+/, "").trim();
+  if (!line) return null;
+  let menge = null, rest = line, m;
+  if ((m = line.match(/^(\d+(?:[.,]\d+)?)\s*[-–]\s*(\d+(?:[.,]\d+)?)\s*(.*)$/))) { menge = parseNum(m[2]); rest = m[3]; }
+  else if ((m = line.match(/^(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:[.,]\d+)?|[½¼¾⅓⅔])\s*(.*)$/))) { menge = parseNum(m[1]); rest = m[2]; }
+  if (menge === null || isNaN(menge)) return { menge: null, einheit: "", name: line };
+  let einheit = "", name = rest.trim();
+  const t = rest.match(/^(\S+?)\.?\s+(.+)$/);
+  if (t && UNIT_ALIAS[t[1].toLowerCase()]) { einheit = UNIT_ALIAS[t[1].toLowerCase()]; name = t[2].trim(); }
+  if (!name) { name = rest.trim() || line; menge = null; einheit = ""; }
+  return { menge, einheit, name };
+}
+const parseZutaten = (text) => text.split(/\r?\n/).map(parseLine).filter(Boolean);
+function fmtNum(n) { n = n >= 10 ? Math.round(n) : Math.round(n * 100) / 100; return String(n).replace(".", ","); }
+function fmtZutat(z, menge = z.menge, einheit = z.einheit) {
+  return [menge != null ? fmtNum(menge) : "", einheit, z.name].filter(Boolean).join(" ");
+}
+const zutatenText = (r) => r.zutaten.map((z) => fmtZutat(z)).join("\n");
+const COUNT_UNITS = ["", "Stk", "Dose", "Pck", "Bund", "Zehe", "Stange", "Kopf", "Glas", "Becher", "Scheibe"];
+function toBase(m, u) { return u === "kg" ? [m * 1000, "g"] : u === "l" ? [m * 1000, "ml"] : [m, u]; }
+function fromBase(m, u) { return u === "g" && m >= 1000 ? [m / 1000, "kg"] : u === "ml" && m >= 1000 ? [m / 1000, "l"] : [m, u]; }
+
+// ---------- Daten ----------
+const KEY = "menueplaner";
+const SEED = [
+  ["Spaghetti Bolognese", 4, ["Nudeln", "Kinder"], "500 g Spaghetti\n500 g Hackfleisch gemischt\n1 Zwiebel\n2 Zehen Knoblauch\n1 Möhre\n2 EL Tomatenmark\n1 Dose gehackte Tomaten\n2 EL Olivenöl\n50 g Parmesan\nSalz\nPfeffer", "Zwiebel, Knoblauch und Möhre klein schneiden und in Öl anbraten. Hackfleisch dazugeben und krümelig braten. Tomatenmark kurz mitrösten, Tomaten zugeben und 20–30 Minuten köcheln lassen. Spaghetti kochen, mit Soße und Parmesan servieren."],
+  ["Kartoffelsuppe", 4, ["Suppe", "Herbst"], "1 kg Kartoffeln\n2 Möhren\n1 Stange Lauch\n1 Zwiebel\n1 l Gemüsebrühe\n4 Würstchen\n1 TL Majoran\nSalz\nPfeffer", "Gemüse würfeln und in etwas Fett anschwitzen. Mit Brühe aufgießen und 20 Minuten kochen. Zur Hälfte pürieren, würzen, Würstchenscheiben zugeben und kurz erhitzen."],
+  ["Gemüsepfanne mit Reis", 4, ["Vegetarisch", "schnell"], "300 g Reis\n2 Paprika\n1 Zucchini\n200 g Champignons\n1 Zwiebel\n3 EL Öl\n100 ml Sahne\nSalz\nPfeffer\nPaprikapulver", "Reis nach Packungsangabe kochen. Gemüse in Stücke schneiden und in Öl 10 Minuten braten. Mit Sahne ablöschen, würzen und mit dem Reis servieren."],
+  ["Pfannkuchen mit Apfelmus", 4, ["Süß", "Kinder"], "250 g Mehl\n500 ml Milch\n3 Eier\n1 Prise Salz\n4 EL Öl\n1 Glas Apfelmus", "Mehl, Milch, Eier und Salz glatt verrühren, 15 Minuten quellen lassen. In heißem Öl portionsweise dünne Pfannkuchen ausbacken. Mit Apfelmus servieren."],
+  ["Ofenkartoffeln mit Kräuterquark", 4, ["Vegetarisch", "Ofen"], "1 kg Kartoffeln\n3 EL Öl\n1 TL Paprikapulver\n500 g Quark\n1 Bund Schnittlauch\nSalz\nPfeffer", "Kartoffeln in Spalten schneiden, mit Öl und Gewürzen mischen und bei 200 °C ca. 35 Minuten backen. Quark mit Schnittlauch, Salz und Pfeffer verrühren."],
+  ["Hähnchen-Curry", 4, ["Reis", "Fleisch"], "600 g Hähnchenbrust\n1 Dose Kokosmilch\n2 EL Currypaste\n1 Paprika\n1 Zwiebel\n250 g Reis\n2 EL Öl\nSalz", "Hähnchen würfeln und in Öl anbraten. Zwiebel und Paprika zugeben, Currypaste kurz mitrösten, mit Kokosmilch ablöschen und 15 Minuten köcheln. Mit Reis servieren."],
+];
+function seedState() {
+  return {
+    v: 1,
+    recipes: SEED.map(([name, portionen, tags, z, schritte]) => ({ id: uid(), name, portionen, tags: [...tags, "Beispiel"], zutaten: parseZutaten(z), schritte, variantVon: null })),
+    plan: {}, shop: {},
+  };
+}
+function loadState() {
+  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw); if (s && Array.isArray(s.recipes)) { s.plan ||= {}; s.shop ||= {}; return s; } } } catch (e) {}
+  return seedState();
+}
+let state = loadState();
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { toast("Speichern fehlgeschlagen (Speicher voll?)"); } }
+save();
+const recipeById = (id) => state.recipes.find((r) => r.id === id);
+
+let tab = "woche", weekStart = startOfWeek(new Date());
+let recipeQuery = "", tagFilter = "", pickDay = null;
+try { const t = localStorage.getItem(KEY + "-tab"); if (["woche", "rezepte", "einkauf"].includes(t)) tab = t; } catch (e) {}
+
+function toast(msg) {
+  const el = document.createElement("div"); el.className = "toast"; el.textContent = msg;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 2200);
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  let ok = false; try { ok = document.execCommand("copy"); } catch (e) {}
+  ta.remove(); return ok;
+}
+
+// ---------- Einkaufsliste berechnen ----------
+function shopState(wk) { return (state.shop[wk] ||= { checked: {}, extras: [], offDays: [] }); }
+function computeShopping(ws) {
+  const wk = dkey(ws), st = shopState(wk), map = new Map();
+  for (let i = 0; i < 7; i++) {
+    if (st.offDays.includes(i)) continue;
+    for (const e of state.plan[dkey(addDays(ws, i))] || []) {
+      const r = e.rid && recipeById(e.rid); if (!r) continue;
+      const f = e.p / (r.portionen || 1);
+      for (const z of r.zutaten) {
+        const [m, u] = z.menge != null ? toBase(z.menge * f, z.einheit) : [null, z.einheit];
+        const key = z.name.trim().toLowerCase() + "|" + (m != null ? u : "");
+        let it = map.get(key);
+        if (!it) map.set(key, (it = { key, name: z.name.trim(), unit: m != null ? u : "", menge: null, src: new Set() }));
+        if (m != null) it.menge = (it.menge || 0) + m;
+        it.src.add(r.name);
+      }
+    }
+  }
+  const list = [...map.values()].map((it) => {
+    if (it.menge != null) {
+      let [m, u] = fromBase(it.menge, it.unit);
+      if (COUNT_UNITS.includes(u)) m = Math.ceil(m - 1e-9); // Stückware gibt es nur ganz zu kaufen
+      it.text = fmtZutat({ name: it.name }, m, u);
+    }
+    else it.text = it.name;
+    return it;
+  });
+  // Einträge ohne Menge entfallen, wenn derselbe Artikel schon mit Menge auf der Liste steht
+  const withQty = new Set(list.filter((i) => i.menge != null).map((i) => i.name.toLowerCase()));
+  return list.filter((i) => i.menge != null || !withQty.has(i.name.toLowerCase())).sort((a, b) => a.name.localeCompare(b.name, "de"));
+}
+function shoppingText(ws) {
+  const st = shopState(dkey(ws));
+  const lines = computeShopping(ws).filter((i) => !st.checked[i.key]).map((i) => "- " + i.text);
+  st.extras.filter((x) => !x.done).forEach((x) => lines.push("- " + x.text));
+  return `Einkaufsliste KW ${isoWeek(ws)} (${weekLabel(ws)})\n` + lines.join("\n");
+}
+
+// ---------- Rendering ----------
+function render() {
+  document.querySelectorAll("main > section").forEach((s) => (s.hidden = s.id !== "view-" + tab));
+  document.querySelectorAll(".tabs button").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+  const ab = $("#actionBtn");
+  $("#actionRow").hidden = tab === "woche";
+  if (tab === "rezepte") ab.textContent = "＋ Neues Rezept";
+  if (tab === "einkauf") ab.textContent = "📋 Einkaufsliste kopieren";
+  if (tab === "woche") renderWoche(); else if (tab === "rezepte") renderRezepte(); else renderEinkauf();
+}
+
+function renderWoche() {
+  const todayKey = dkey(new Date()), isCur = dkey(weekStart) === dkey(startOfWeek(new Date()));
+  let h = `<div class="weeknav"><button data-a="wk" data-n="-1" aria-label="Vorherige Woche">‹</button>
+    <div><b>KW ${isoWeek(weekStart)}</b><small>${esc(weekLabel(weekStart))}</small></div>
+    <button data-a="wk" data-n="1" aria-label="Nächste Woche">›</button></div>`;
+  if (!isCur) h += `<div style="text-align:center"><button class="link-btn" data-a="wk-today">Zur aktuellen Woche</button></div>`;
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(weekStart, i), k = dkey(d), entries = state.plan[k] || [];
+    h += `<div class="day ${k === todayKey ? "today" : ""}"><div class="day-head"><b>${DAYS[i]}</b><span>${d.getDate()}.${d.getMonth() + 1}.</span>
+      <button class="add-btn" data-a="add" data-d="${k}">＋ Gericht</button></div>`;
+    entries.forEach((e, idx) => {
+      const r = e.rid && recipeById(e.rid);
+      if (e.rid && !r) return;
+      h += `<div class="entry">` + (r
+        ? `<span class="ename" data-a="view" data-id="${r.id}">${esc(r.name)}</span>
+           <div class="qty"><button data-a="p" data-n="-1" data-d="${k}" data-i="${idx}" aria-label="Weniger Portionen">−</button><b>${e.p}</b><button data-a="p" data-n="1" data-d="${k}" data-i="${idx}" aria-label="Mehr Portionen">＋</button><small>Port.</small></div>`
+        : `<span class="ename free">${esc(e.text)}</span>`) +
+        `<button class="x-btn" data-a="rm" data-d="${k}" data-i="${idx}" aria-label="Entfernen">✕</button></div>`;
+    });
+    h += `</div>`;
+  }
+  h += `<p class="hint">Tippe auf ein Gericht, um das Rezept zu sehen. Die Portionen bestimmen, wie viel auf der Einkaufsliste landet.</p>`;
+  $("#view-woche").innerHTML = h;
+}
+
+function allTags() { return [...new Set(state.recipes.flatMap((r) => r.tags))].sort((a, b) => a.localeCompare(b, "de")); }
+function filterRecipes(q, tag) {
+  q = q.trim().toLowerCase();
+  return state.recipes.filter((r) => (!tag || r.tags.includes(tag)) &&
+    (!q || r.name.toLowerCase().includes(q) || r.tags.some((t) => t.toLowerCase().includes(q)) || r.zutaten.some((z) => z.name.toLowerCase().includes(q))))
+    .sort((a, b) => a.name.localeCompare(b.name, "de"));
+}
+function recipeCard(r, attrs) {
+  const von = r.variantVon && recipeById(r.variantVon);
+  return `<div class="recipe" ${attrs}><b>${esc(r.name)}</b><div class="meta"><span>${r.portionen} Port.</span>
+    ${von ? `<span class="chip muted">Variante von ${esc(von.name)}</span>` : ""}${r.tags.map((t) => `<span class="chip">${esc(t)}</span>`).join("")}</div></div>`;
+}
+function renderRezepte() {
+  const root = $("#view-rezepte"), focus = document.activeElement && document.activeElement.id === "recipeSearch";
+  const tags = allTags(), list = filterRecipes(recipeQuery, tagFilter);
+  root.innerHTML = `<input type="search" class="search" id="recipeSearch" placeholder="Rezept, Tag oder Zutat suchen …" value="${esc(recipeQuery)}">
+    ${tags.length ? `<div class="filters">${tags.map((t) => `<button class="${t === tagFilter ? "on" : ""}" data-a="tag" data-t="${esc(t)}">${esc(t)}</button>`).join("")}</div>` : ""}
+    <div id="recipeList">${list.length ? list.map((r) => recipeCard(r, `data-a="view" data-id="${r.id}"`)).join("") : `<div class="empty">Keine Rezepte gefunden.</div>`}</div>`;
+  if (focus) { const el = $("#recipeSearch"); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+}
+
+function renderEinkauf() {
+  const wk = dkey(weekStart), st = shopState(wk), items = computeShopping(weekStart);
+  let h = `<div class="weeknav"><button data-a="wk" data-n="-1" aria-label="Vorherige Woche">‹</button>
+    <div><b>KW ${isoWeek(weekStart)}</b><small>${esc(weekLabel(weekStart))}</small></div>
+    <button data-a="wk" data-n="1" aria-label="Nächste Woche">›</button></div>
+    <div class="daychips">${DAYS_S.map((n, i) => `<button class="${st.offDays.includes(i) ? "" : "on"}" data-a="day-toggle" data-i="${i}">${n}</button>`).join("")}</div>
+    <p class="hint" style="margin:-2px 0 8px">Tage antippen, um sie aus der Liste herauszunehmen (z.B. auswärts essen).</p>`;
+  if (!items.length && !st.extras.length) h += `<div class="empty">Für diese Woche sind noch keine Gerichte geplant.<br>Plane sie im Tab „Woche“ – die Liste entsteht automatisch.</div>`;
+  items.forEach((it) => {
+    const done = !!st.checked[it.key];
+    h += `<label class="row ${done ? "done" : ""}"><input type="checkbox" data-a="check" data-k="${esc(it.key)}" ${done ? "checked" : ""}>
+      <div class="info"><b>${esc(it.text)}</b><span>${esc([...it.src].join(", "))}</span></div></label>`;
+  });
+  if (st.extras.length) h += `<h2>Zusätzlich</h2>`;
+  st.extras.forEach((x) => {
+    h += `<div class="row ${x.done ? "done" : ""}"><input type="checkbox" data-a="x-check" data-id="${x.id}" ${x.done ? "checked" : ""}>
+      <div class="info"><b>${esc(x.text)}</b></div><button class="x-btn" data-a="x-del" data-id="${x.id}" aria-label="Entfernen">✕</button></div>`;
+  });
+  h += `<div class="addline"><input type="text" id="extraInput" placeholder="Weiteren Artikel hinzufügen …"><button data-a="x-add" aria-label="Hinzufügen">＋</button></div>`;
+  const nChecked = items.filter((i) => st.checked[i.key]).length + st.extras.filter((x) => x.done).length;
+  if (nChecked) h += `<div style="text-align:center"><button class="link-btn" data-a="uncheck-all">Alle Häkchen entfernen</button></div>`;
+  $("#view-einkauf").innerHTML = h;
+}
+
+// ---------- Rezept ansehen / bearbeiten ----------
+let editing = null;
+function openView(id) {
+  const r = recipeById(id); if (!r) return;
+  const von = r.variantVon && recipeById(r.variantVon);
+  $("#viewBody").innerHTML = `<h3>${esc(r.name)}</h3>
+    <div class="meta" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="chip muted">${r.portionen} Portionen</span>
+    ${von ? `<span class="chip muted">Variante von ${esc(von.name)}</span>` : ""}${r.tags.map((t) => `<span class="chip">${esc(t)}</span>`).join("")}</div>
+    <h2 style="margin-top:6px">Zutaten</h2>
+    <ul class="ing">${r.zutaten.map((z) => `<li>${esc(fmtZutat(z))}</li>`).join("") || "<li>–</li>"}</ul>
+    ${r.schritte ? `<h2>Zubereitung</h2><div class="steps">${esc(r.schritte)}</div>` : ""}
+    <div class="dialog-actions">
+      <button class="btn-secondary" data-a="v-close">Schließen</button>
+      <button class="btn-secondary" data-a="v-copy" data-id="${r.id}">Als Variante kopieren</button>
+      <button class="btn-primary" data-a="v-edit" data-id="${r.id}">Bearbeiten</button>
+    </div>`;
+  $("#viewDialog").showModal();
+}
+function openEdit(r, isNew) {
+  editing = { r, isNew };
+  $("#editTitle").textContent = isNew ? (r.variantVon ? "Neue Variante" : "Neues Rezept") : "Rezept bearbeiten";
+  $("#rName").value = r.name; $("#rP").value = r.portionen; $("#rTags").value = r.tags.join(", ");
+  $("#rZut").value = zutatenText(r); $("#rSteps").value = r.schritte || "";
+  $("#editDelete").hidden = isNew;
+  $("#editDialog").showModal();
+}
+function saveEdit() {
+  const name = $("#rName").value.trim();
+  if (!name) { toast("Bitte einen Namen eingeben"); return; }
+  const r = editing.r;
+  r.name = name; r.portionen = Math.max(1, parseInt($("#rP").value) || 4);
+  r.tags = [...new Set($("#rTags").value.split(",").map((t) => t.trim()).filter(Boolean))];
+  r.zutaten = parseZutaten($("#rZut").value); r.schritte = $("#rSteps").value.trim();
+  if (editing.isNew) state.recipes.push(r);
+  save(); $("#editDialog").close(); render(); toast("Rezept gespeichert");
+}
+function deleteRecipe() {
+  const r = editing.r;
+  if (!confirm(`„${r.name}“ wirklich löschen? Es wird auch aus dem Wochenplan entfernt.`)) return;
+  state.recipes = state.recipes.filter((x) => x.id !== r.id);
+  for (const k of Object.keys(state.plan)) { state.plan[k] = state.plan[k].filter((e) => e.rid !== r.id); if (!state.plan[k].length) delete state.plan[k]; }
+  save(); $("#editDialog").close(); render();
+}
+function copyAsVariant(id) {
+  const r = recipeById(id);
+  const copy = JSON.parse(JSON.stringify(r));
+  copy.id = uid(); copy.name = r.name + " (Variante)"; copy.variantVon = r.variantVon || r.id;
+  copy.tags = copy.tags.filter((t) => t !== "Beispiel");
+  $("#viewDialog").close(); openEdit(copy, true);
+}
+
+// ---------- Gericht wählen ----------
+function renderPick() {
+  const q = $("#pickSearch").value, list = filterRecipes(q, "");
+  let h = list.map((r) => recipeCard(r, `data-a="pick" data-id="${r.id}"`)).join("");
+  if (q.trim()) h += `<div class="recipe" data-a="pick-free"><b>„${esc(q.trim())}“ als Freitext eintragen</b><div class="meta">z.B. auswärts essen, Reste, Pizza bestellen</div></div>`;
+  $("#pickList").innerHTML = h || `<div class="empty">Noch keine Rezepte vorhanden.</div>`;
+}
+function addEntry(entry) {
+  (state.plan[pickDay] ||= []).push(entry);
+  save(); $("#pickDialog").close(); render();
+}
+
+// ---------- Backup ----------
+function download(name, text, type) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function recipesMarkdown() {
+  return `---\ntitel: Rezeptsammlung\ndatum: ${dkey(new Date())}\ntyp: ressource\nbereich: Familie\ntags: rezepte\n---\n\n# Rezeptsammlung\n\n` +
+    state.recipes.slice().sort((a, b) => a.name.localeCompare(b.name, "de")).map((r) =>
+      `## ${r.name}\n\n${r.portionen} Portionen${r.tags.length ? " · " + r.tags.map((t) => "#" + t.replace(/\s+/g, "-")).join(" ") : ""}\n\n### Zutaten\n\n${r.zutaten.map((z) => "- " + fmtZutat(z)).join("\n")}\n\n${r.schritte ? "### Zubereitung\n\n" + r.schritte + "\n" : ""}`).join("\n");
+}
+
+// ---------- Ereignisse ----------
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("[data-a]"); if (!t) return;
+  const a = t.dataset.a, d = t.dataset.d, i = +t.dataset.i;
+  if (a === "wk") { weekStart = addDays(weekStart, 7 * +t.dataset.n); render(); }
+  else if (a === "wk-today") { weekStart = startOfWeek(new Date()); render(); }
+  else if (a === "add") { pickDay = d; $("#pickTitle").textContent = "Gericht für " + DAYS[(new Date(d + "T00:00").getDay() + 6) % 7]; $("#pickSearch").value = ""; renderPick(); $("#pickDialog").showModal(); }
+  else if (a === "p") { const e = state.plan[d][i]; e.p = Math.max(1, e.p + +t.dataset.n); save(); render(); }
+  else if (a === "rm") { state.plan[d].splice(i, 1); if (!state.plan[d].length) delete state.plan[d]; save(); render(); }
+  else if (a === "view") openView(t.dataset.id);
+  else if (a === "v-close") $("#viewDialog").close();
+  else if (a === "v-edit") { $("#viewDialog").close(); openEdit(JSON.parse(JSON.stringify(recipeById(t.dataset.id))), false); }
+  else if (a === "v-copy") copyAsVariant(t.dataset.id);
+  else if (a === "tag") { tagFilter = tagFilter === t.dataset.t ? "" : t.dataset.t; renderRezepte(); }
+  else if (a === "pick") { const r = recipeById(t.dataset.id); addEntry({ rid: r.id, p: r.portionen }); }
+  else if (a === "pick-free") { addEntry({ text: $("#pickSearch").value.trim() }); }
+  else if (a === "day-toggle") { const st = shopState(dkey(weekStart)); st.offDays = st.offDays.includes(i) ? st.offDays.filter((x) => x !== i) : [...st.offDays, i]; save(); render(); }
+  else if (a === "check") { const st = shopState(dkey(weekStart)); st.checked[t.dataset.k] = t.checked; if (!t.checked) delete st.checked[t.dataset.k]; save(); render(); }
+  else if (a === "x-check") { const x = shopState(dkey(weekStart)).extras.find((e) => e.id === t.dataset.id); if (x) x.done = t.checked; save(); render(); }
+  else if (a === "x-del") { const st = shopState(dkey(weekStart)); st.extras = st.extras.filter((e) => e.id !== t.dataset.id); save(); render(); }
+  else if (a === "x-add") addExtra();
+  else if (a === "uncheck-all") { const st = shopState(dkey(weekStart)); st.checked = {}; st.extras.forEach((x) => (x.done = false)); save(); render(); }
+});
+function addExtra() {
+  const el = $("#extraInput"), text = el.value.trim(); if (!text) return;
+  shopState(dkey(weekStart)).extras.push({ id: uid(), text, done: false }); save(); render(); $("#extraInput").focus();
+}
+document.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && ev.target.id === "extraInput") addExtra(); });
+document.addEventListener("input", (ev) => {
+  if (ev.target.id === "recipeSearch") { recipeQuery = ev.target.value; renderRezepte(); }
+  if (ev.target.id === "pickSearch") renderPick();
+});
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
+  tab = b.dataset.tab; try { localStorage.setItem(KEY + "-tab", tab); } catch (e) {} render(); window.scrollTo(0, 0);
+}));
+$("#actionBtn").addEventListener("click", async () => {
+  if (tab === "rezepte") openEdit({ id: uid(), name: "", portionen: 4, tags: [], zutaten: [], schritte: "", variantVon: null }, true);
+  else if (tab === "einkauf") toast((await copyText(shoppingText(weekStart))) ? "Einkaufsliste kopiert" : "Kopieren nicht möglich");
+});
+$("#pickCancel").addEventListener("click", () => $("#pickDialog").close());
+$("#editCancel").addEventListener("click", () => $("#editDialog").close());
+$("#editSave").addEventListener("click", saveEdit);
+$("#editDelete").addEventListener("click", deleteRecipe);
+$("#settingsBtn").addEventListener("click", () => $("#settingsDialog").showModal());
+$("#closeSettingsBtn").addEventListener("click", () => $("#settingsDialog").close());
+$("#exportJsonBtn").addEventListener("click", () => download(`menueplaner-backup-${dkey(new Date())}.json`, JSON.stringify(state, null, 1), "application/json"));
+$("#exportRecipesBtn").addEventListener("click", () => download(`Rezeptsammlung-${dkey(new Date())}.md`, recipesMarkdown(), "text/markdown"));
+$("#importJsonBtn").addEventListener("click", () => $("#importInput").click());
+$("#importInput").addEventListener("change", async (ev) => {
+  const f = ev.target.files[0]; ev.target.value = ""; if (!f) return;
+  try {
+    const s = JSON.parse(await f.text());
+    if (!s || !Array.isArray(s.recipes)) throw new Error("kein Backup");
+    if (!confirm(`Backup einspielen? Aktuelle Daten werden ersetzt (${s.recipes.length} Rezepte im Backup).`)) return;
+    s.plan ||= {}; s.shop ||= {}; state = s; save(); $("#settingsDialog").close(); render(); toast("Backup eingespielt");
+  } catch (e) { toast("Datei ist kein gültiges Backup"); }
+});
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+render();
+</script>
+</body>
+</html>
