@@ -9,7 +9,7 @@ PWA zur Planung des Wochenmenüs. Reines HTML/JS, offlinefähig, Daten in `local
 - **Einkauf** – Liste aus den geplanten Gerichten der Woche: Mengen werden auf die Portionen umgerechnet und gleiche Zutaten zusammengerechnet (g/kg, ml/l; Stückware wird aufgerundet). Tage abwählbar, Häkchen, eigene Zusatzartikel, Button **Einkaufsliste kopieren** (nur offene Posten).
 - **Backup** – JSON-Backup/-Import, Rezepte als Markdown fürs Second Brain.
 
-Beim ersten Start sind 6 Beispielrezepte (Tag „Beispiel“) angelegt – einfach ersetzen oder löschen.
+Beim ersten Start sind 12 Familienrezepte angelegt (Pfannkuchen, Bolognese, Pizza, Lasagne, Hamburger, Ramen, Kaiserschmarrn, Sauerkraut-Nudeln, Gulaschsuppe, Chili con Carne, Tiramisu, Russischer Zupfkuchen) – Mengen bei Bedarf anpassen.
 
 ## Entwicklung
 

@@ -212,7 +212,7 @@ const UNIT_ALIAS = {
   stk: "Stk", stück: "Stk", st: "Stk", pck: "Pck", pckg: "Pck", pkg: "Pck", päckchen: "Pck", packung: "Pck",
   dose: "Dose", dosen: "Dose", bund: "Bund", prise: "Prise", prisen: "Prise",
   zehe: "Zehe", zehen: "Zehe", scheibe: "Scheibe", scheiben: "Scheibe", glas: "Glas", becher: "Becher",
-  stange: "Stange", stangen: "Stange", kopf: "Kopf", handvoll: "Handvoll",
+  stange: "Stange", stangen: "Stange", kopf: "Kopf", köpfe: "Kopf", gläser: "Glas", handvoll: "Handvoll", würfel: "Würfel",
 };
 function parseNum(s) {
   s = s.trim(); let m;
@@ -237,28 +237,64 @@ function parseLine(line) {
 }
 const parseZutaten = (text) => text.split(/\r?\n/).map(parseLine).filter(Boolean);
 function fmtNum(n) { n = n >= 10 ? Math.round(n) : Math.round(n * 100) / 100; return String(n).replace(".", ","); }
+const UNIT_PLURAL = { Dose: "Dosen", Scheibe: "Scheiben", Zehe: "Zehen", Stange: "Stangen", Prise: "Prisen", Glas: "Gläser", Kopf: "Köpfe" };
 function fmtZutat(z, menge = z.menge, einheit = z.einheit) {
+  if (menge > 1 && UNIT_PLURAL[einheit]) einheit = UNIT_PLURAL[einheit];
   return [menge != null ? fmtNum(menge) : "", einheit, z.name].filter(Boolean).join(" ");
 }
 const zutatenText = (r) => r.zutaten.map((z) => fmtZutat(z)).join("\n");
-const COUNT_UNITS = ["", "Stk", "Dose", "Pck", "Bund", "Zehe", "Stange", "Kopf", "Glas", "Becher", "Scheibe"];
+const COUNT_UNITS = ["", "Stk", "Dose", "Pck", "Bund", "Zehe", "Stange", "Kopf", "Glas", "Becher", "Scheibe", "Würfel"];
+// Singular/Plural gleicher Artikel zusammenführen (Schlüssel = Singular, kleingeschrieben)
+const PLURAL = { Zwiebel: "Zwiebeln", Ei: "Eier", Möhre: "Möhren", Tomate: "Tomaten", Kartoffel: "Kartoffeln", Gewürzgurke: "Gewürzgurken", Paprika: "Paprika", Zucchini: "Zucchini" };
+const CANON = {}; Object.entries(PLURAL).forEach(([s, p]) => { CANON[s.toLowerCase()] = s; CANON[p.toLowerCase()] = s; });
+const canonName = (n) => CANON[n.trim().toLowerCase()] || n.trim();
 function toBase(m, u) { return u === "kg" ? [m * 1000, "g"] : u === "l" ? [m * 1000, "ml"] : [m, u]; }
 function fromBase(m, u) { return u === "g" && m >= 1000 ? [m / 1000, "kg"] : u === "ml" && m >= 1000 ? [m / 1000, "l"] : [m, u]; }
 
 // ---------- Daten ----------
 const KEY = "menueplaner";
 const SEED = [
-  ["Spaghetti Bolognese", 4, ["Nudeln", "Kinder"], "500 g Spaghetti\n500 g Hackfleisch gemischt\n1 Zwiebel\n2 Zehen Knoblauch\n1 Möhre\n2 EL Tomatenmark\n1 Dose gehackte Tomaten\n2 EL Olivenöl\n50 g Parmesan\nSalz\nPfeffer", "Zwiebel, Knoblauch und Möhre klein schneiden und in Öl anbraten. Hackfleisch dazugeben und krümelig braten. Tomatenmark kurz mitrösten, Tomaten zugeben und 20–30 Minuten köcheln lassen. Spaghetti kochen, mit Soße und Parmesan servieren."],
-  ["Kartoffelsuppe", 4, ["Suppe", "Herbst"], "1 kg Kartoffeln\n2 Möhren\n1 Stange Lauch\n1 Zwiebel\n1 l Gemüsebrühe\n4 Würstchen\n1 TL Majoran\nSalz\nPfeffer", "Gemüse würfeln und in etwas Fett anschwitzen. Mit Brühe aufgießen und 20 Minuten kochen. Zur Hälfte pürieren, würzen, Würstchenscheiben zugeben und kurz erhitzen."],
-  ["Gemüsepfanne mit Reis", 4, ["Vegetarisch", "schnell"], "300 g Reis\n2 Paprika\n1 Zucchini\n200 g Champignons\n1 Zwiebel\n3 EL Öl\n100 ml Sahne\nSalz\nPfeffer\nPaprikapulver", "Reis nach Packungsangabe kochen. Gemüse in Stücke schneiden und in Öl 10 Minuten braten. Mit Sahne ablöschen, würzen und mit dem Reis servieren."],
-  ["Pfannkuchen mit Apfelmus", 4, ["Süß", "Kinder"], "250 g Mehl\n500 ml Milch\n3 Eier\n1 Prise Salz\n4 EL Öl\n1 Glas Apfelmus", "Mehl, Milch, Eier und Salz glatt verrühren, 15 Minuten quellen lassen. In heißem Öl portionsweise dünne Pfannkuchen ausbacken. Mit Apfelmus servieren."],
-  ["Ofenkartoffeln mit Kräuterquark", 4, ["Vegetarisch", "Ofen"], "1 kg Kartoffeln\n3 EL Öl\n1 TL Paprikapulver\n500 g Quark\n1 Bund Schnittlauch\nSalz\nPfeffer", "Kartoffeln in Spalten schneiden, mit Öl und Gewürzen mischen und bei 200 °C ca. 35 Minuten backen. Quark mit Schnittlauch, Salz und Pfeffer verrühren."],
-  ["Hähnchen-Curry", 4, ["Reis", "Fleisch"], "600 g Hähnchenbrust\n1 Dose Kokosmilch\n2 EL Currypaste\n1 Paprika\n1 Zwiebel\n250 g Reis\n2 EL Öl\nSalz", "Hähnchen würfeln und in Öl anbraten. Zwiebel und Paprika zugeben, Currypaste kurz mitrösten, mit Kokosmilch ablöschen und 15 Minuten köcheln. Mit Reis servieren."],
+  ["Pfannkuchen", 4, ["Süß", "Kinder"],
+    "250 g Mehl\n500 ml Milch\n3 Eier\n1 EL Zucker\n1 Prise Salz\n4 EL Öl",
+    "Mehl, Milch, Eier, Zucker und Salz zu einem glatten Teig verrühren und 15 Minuten quellen lassen.\nEtwas Öl in einer Pfanne erhitzen, eine Kelle Teig hineingeben und dünn verlaufen lassen. Von beiden Seiten goldbraun backen, dann warm halten und mit dem restlichen Teig wiederholen.\nServieren mit Apfelmus, Zucker und Zimt, Nutella o. Ä."],
+  ["Spaghetti Bolognese", 4, ["Nudeln", "Kinder"],
+    "500 g Spaghetti\n500 g Hackfleisch gemischt\n1 Zwiebel\n2 Zehen Knoblauch\n1 Möhre\n2 EL Tomatenmark\n1 Dose gehackte Tomaten\n200 ml Fleischbrühe\n1 TL Oregano\n2 EL Olivenöl\n50 g Parmesan\nSalz\nPfeffer",
+    "Zwiebel, Knoblauch und Möhre fein würfeln und in Olivenöl anschwitzen.\nHackfleisch zugeben und krümelig anbraten. Tomatenmark kurz mitrösten.\nGehackte Tomaten und Brühe zugeben, mit Oregano, Salz und Pfeffer würzen und 30 Minuten köcheln lassen.\nSpaghetti nach Packungsangabe kochen und mit der Soße und geriebenem Parmesan servieren."],
+  ["Pizza (Teig selber machen)", 4, ["Ofen", "Kinder"],
+    "500 g Mehl\n1 Würfel Hefe\n1 TL Zucker\n1 TL Salz\n300 ml Wasser\n3 EL Olivenöl\n1 Dose passierte Tomaten\n1 TL Oregano\n250 g Mozzarella\n200 g Salami\n1 Paprika\n150 g Champignons\n1 Zwiebel",
+    "Hefe in lauwarmem Wasser mit dem Zucker auflösen. Mehl, Salz und Olivenöl zugeben und alles 8–10 Minuten zu einem glatten Teig kneten. Zugedeckt an einem warmen Ort ca. 45 Minuten gehen lassen, bis er sich verdoppelt hat.\nPassierte Tomaten mit Oregano, Salz und Pfeffer würzen.\nTeig halbieren, auf zwei bemehlten Blechen dünn ausrollen, mit Soße bestreichen und nach Wunsch belegen (Salami, Paprika, Champignons, Zwiebel), mit Mozzarella bestreuen.\nBei 220 °C Ober-/Unterhitze 12–15 Minuten backen."],
+  ["Lasagne", 6, ["Ofen", "Nudeln"],
+    "9 Lasagneplatten\n500 g Hackfleisch gemischt\n1 Zwiebel\n2 Zehen Knoblauch\n1 Möhre\n2 EL Tomatenmark\n1 Dose gehackte Tomaten\n1 TL Oregano\n2 EL Olivenöl\n50 g Butter\n50 g Mehl\n600 ml Milch\n1 Prise Muskat\n200 g geriebener Käse\nSalz\nPfeffer",
+    "Zwiebel, Knoblauch und Möhre würfeln, in Olivenöl anschwitzen, Hackfleisch zugeben und anbraten. Tomatenmark und gehackte Tomaten zugeben, mit Oregano, Salz und Pfeffer würzen und 20 Minuten köcheln lassen.\nBéchamel: Butter schmelzen, Mehl einrühren, nach und nach die Milch unterrühren und unter Rühren aufkochen, bis die Soße bindet. Mit Salz, Pfeffer und Muskat abschmecken.\nAuflaufform abwechselnd mit Hackfleischsoße, Lasagneplatten und Béchamel schichten, mit Béchamel und Käse abschließen.\nBei 180 °C Ober-/Unterhitze ca. 35–40 Minuten goldbraun backen."],
+  ["Hamburger", 4, ["Fleisch", "Kinder"],
+    "4 Burgerbrötchen\n600 g Rinderhack\n4 Scheiben Käse\n1 Kopf Salat\n2 Tomaten\n1 Zwiebel\n4 Gewürzgurken\n4 EL Ketchup\n2 EL Mayonnaise\n1 EL Senf\n2 EL Öl\nSalz\nPfeffer",
+    "Rinderhack mit Salz und Pfeffer würzen, zu vier flachen Patties formen (in der Mitte eine kleine Mulde eindrücken).\nPatties in Öl von jeder Seite 3–4 Minuten braten, zum Schluss eine Scheibe Käse auflegen und schmelzen lassen.\nBrötchen aufschneiden und kurz anrösten. Mit Ketchup, Mayonnaise und Senf bestreichen, mit Salat, Tomatenscheiben, Zwiebelringen, Gurke und Patty belegen."],
+  ["Ramen-Suppe", 4, ["Suppe", "Asia"],
+    "250 g Ramen-Nudeln\n1,2 l Hühnerbrühe\n300 g Hähnchenbrust\n3 EL Sojasauce\n1 Stk Ingwer\n2 Zehen Knoblauch\n4 Eier\n200 g Champignons\n1 Möhre\n2 Frühlingszwiebeln\n1 Pak Choi\n2 TL Sesamöl",
+    "Eier 6–7 Minuten wachsweich kochen, abschrecken und pellen.\nIngwer und Knoblauch fein hacken und in Sesamöl anschwitzen, Hühnerbrühe und Sojasauce zugeben und 10 Minuten leise köcheln lassen. Hähnchenbrust in der Brühe gar ziehen lassen (ca. 12 Minuten), herausnehmen und in Streifen schneiden.\nChampignons, Möhre und Pak Choi in feine Streifen schneiden und 3–4 Minuten in der Brühe garen.\nRamen-Nudeln separat nach Packungsangabe kochen, auf Schüsseln verteilen, mit Brühe und Gemüse übergießen und mit Hähnchen, halbierten Eiern und Frühlingszwiebelringen toppen."],
+  ["Kaiserschmarrn", 4, ["Süß", "Kinder"],
+    "250 g Mehl\n500 ml Milch\n4 Eier\n3 EL Zucker\n1 Pck. Vanillezucker\n1 Prise Salz\n50 g Rosinen\n40 g Butter\n2 EL Puderzucker\n1 Glas Apfelmus",
+    "Eier trennen. Eigelb mit Milch, Mehl, Zucker, Vanillezucker und Salz zu einem glatten Teig verrühren, 10 Minuten quellen lassen. Eiweiß steif schlagen und unterheben.\nButter in einer großen Pfanne erhitzen, Teig hineingeben, Rosinen darüberstreuen und bei mittlerer Hitze stocken lassen.\nWenden, mit zwei Gabeln in mundgerechte Stücke zerreißen und unter Wenden goldbraun braten.\nMit Puderzucker bestäuben und mit Apfelmus servieren."],
+  ["Sauerkraut-Nudeln", 4, ["Nudeln"],
+    "400 g Nudeln\n500 g Sauerkraut\n200 g Speckwürfel\n2 Zwiebeln\n200 ml Sahne\n1 EL Öl\n1 TL Kümmel\nSalz\nPfeffer",
+    "Nudeln nach Packungsangabe kochen.\nSpeckwürfel in Öl knusprig auslassen, gewürfelte Zwiebeln zugeben und glasig dünsten.\nSauerkraut (leicht ausgedrückt) und Kümmel zugeben und 10 Minuten dünsten. Mit Sahne ablöschen, kurz einkochen lassen und mit Salz und Pfeffer abschmecken.\nNudeln unterheben und servieren."],
+  ["Gulaschsuppe", 6, ["Suppe", "Fleisch"],
+    "750 g Rindergulasch\n4 Zwiebeln\n3 Paprika\n500 g Kartoffeln\n2 Möhren\n2 Zehen Knoblauch\n3 EL Tomatenmark\n1 Dose gehackte Tomaten\n1 l Rinderbrühe\n2 EL Paprikapulver\n1 TL Kümmel\n1 TL Majoran\n3 EL Öl\nSalz\nPfeffer",
+    "Gulasch in heißem Öl portionsweise kräftig anbraten und herausnehmen. Gewürfelte Zwiebeln und Knoblauch im Bratfett anbraten, Tomatenmark kurz mitrösten, Paprikapulver einrühren.\nFleisch zurück in den Topf geben, mit Brühe und gehackten Tomaten aufgießen, Kümmel und Majoran zugeben und ca. 60 Minuten schmoren lassen.\nPaprika, Möhren und Kartoffeln würfeln, zugeben und weitere 25 Minuten garen. Mit Salz und Pfeffer abschmecken."],
+  ["Chili con Carne", 4, ["Fleisch", "Reis"],
+    "500 g Hackfleisch gemischt\n2 Zwiebeln\n2 Zehen Knoblauch\n1 Paprika\n1 Dose Kidneybohnen\n1 Dose Mais\n1 Dose gehackte Tomaten\n2 EL Tomatenmark\n200 ml Rinderbrühe\n1 TL Chilipulver\n1 TL Kreuzkümmel\n1 TL Paprikapulver\n2 EL Öl\n250 g Reis\nSalz\nPfeffer",
+    "Zwiebeln und Knoblauch würfeln und in Öl anbraten. Hackfleisch zugeben und krümelig braten, Tomatenmark und Gewürze kurz mitrösten.\nGewürfelte Paprika, gehackte Tomaten und Brühe zugeben und 20 Minuten köcheln lassen.\nAbgetropfte Bohnen und Mais zugeben und weitere 10–15 Minuten köcheln. Mit Salz, Pfeffer und nach Geschmack Chili abschmecken.\nReis kochen und zusammen servieren."],
+  ["Tiramisu", 8, ["Dessert", "Süß"],
+    "500 g Mascarpone\n4 Eier\n80 g Zucker\n300 ml Espresso\n200 g Löffelbiskuits\n2 EL Kakaopulver\n2 EL Amaretto",
+    "Eier trennen. Eigelb mit Zucker cremig aufschlagen, Mascarpone unterrühren. Eiweiß steif schlagen und vorsichtig unterheben.\nEspresso (abgekühlt, nach Wunsch mit Amaretto) in eine flache Schale geben, Löffelbiskuits kurz eintauchen und eine Form damit auslegen.\nHälfte der Creme darauf verteilen, wieder Biskuits und die restliche Creme darauf schichten.\nMindestens 4 Stunden (besser über Nacht) kalt stellen und vor dem Servieren mit Kakao bestäuben.\nHinweis: enthält rohe Eier – für Kinder/Schwangere ggf. Eier weglassen und mit Sahne arbeiten."],
+  ["Russischer Zupfkuchen", 12, ["Kuchen", "Süß"],
+    "300 g Mehl\n1 TL Backpulver\n3 EL Kakaopulver\n100 g Zucker\n1 Pck. Vanillezucker\n1 Ei\n125 g Butter\n500 g Quark\n200 g Zucker\n200 g Butter\n4 Eier\n1 Pck. Puddingpulver",
+    "Teig: Mehl, Backpulver, Kakao, Zucker, Vanillezucker, Ei und Butter zu einem glatten Teig verkneten und kalt stellen.\nFüllung: weiche Butter, Zucker, Quark, Eier und Puddingpulver (Vanille) glatt verrühren.\n2/3 des Teigs in eine gefettete Springform (26 cm) drücken, dabei einen kleinen Rand hochziehen. Füllung einfüllen, den restlichen Teig in Stücken (Zupfen) darauf verteilen.\nBei 175 °C Ober-/Unterhitze ca. 60 Minuten backen, bei Bedarf nach 40 Minuten mit Backpapier abdecken. In der Form auskühlen lassen."],
 ];
 function seedState() {
   return {
     v: 1,
-    recipes: SEED.map(([name, portionen, tags, z, schritte]) => ({ id: uid(), name, portionen, tags: [...tags, "Beispiel"], zutaten: parseZutaten(z), schritte, variantVon: null })),
+    recipes: SEED.map(([name, portionen, tags, z, schritte]) => ({ id: uid(), name, portionen, tags, zutaten: parseZutaten(z), schritte, variantVon: null })),
     plan: {}, shop: {},
   };
 }
@@ -298,7 +334,7 @@ function computeShopping(ws) {
       const f = e.p / (r.portionen || 1);
       for (const z of r.zutaten) {
         const [m, u] = z.menge != null ? toBase(z.menge * f, z.einheit) : [null, z.einheit];
-        const key = z.name.trim().toLowerCase() + "|" + (m != null ? u : "");
+        const key = canonName(z.name).toLowerCase() + "|" + (m != null ? u : "");
         let it = map.get(key);
         if (!it) map.set(key, (it = { key, name: z.name.trim(), unit: m != null ? u : "", menge: null, src: new Set() }));
         if (m != null) it.menge = (it.menge || 0) + m;
@@ -310,7 +346,8 @@ function computeShopping(ws) {
     if (it.menge != null) {
       let [m, u] = fromBase(it.menge, it.unit);
       if (COUNT_UNITS.includes(u)) m = Math.ceil(m - 1e-9); // Stückware gibt es nur ganz zu kaufen
-      it.text = fmtZutat({ name: it.name }, m, u);
+      const cn = canonName(it.name);
+      it.text = fmtZutat({ name: m > 1 && PLURAL[cn] ? PLURAL[cn] : cn }, m, u);
     }
     else it.text = it.name;
     return it;
